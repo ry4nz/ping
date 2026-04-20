@@ -2,6 +2,7 @@
 """pingwatch: ping a host, expose status as HTTP, alarm in browser if down >= 5 min."""
 import http.server
 import json
+import platform
 import re
 import socketserver
 import subprocess
@@ -14,6 +15,9 @@ DEFAULT_HOST = "192.168.50.180"
 PORT = 8765
 PING_INTERVAL = 15  # seconds between pings
 HOST_RE = re.compile(r"^[A-Za-z0-9._:\-]{1,253}$")
+
+IS_WINDOWS = platform.system() == "Windows"
+IS_MACOS = platform.system() == "Darwin"
 
 state = {
     "host": DEFAULT_HOST,
@@ -28,17 +32,35 @@ state_lock = threading.Lock()
 host_changed = threading.Event()
 
 
+def _ping_argv(host):
+    if IS_WINDOWS:
+        # Windows ping: -n count, -w timeout per reply in ms.
+        return ["ping", "-n", "1", "-w", "2000", host]
+    if IS_MACOS:
+        # BSD ping: -c count, -W per-reply timeout in ms, -t overall deadline in s.
+        return ["ping", "-c", "1", "-W", "2000", "-t", "3", host]
+    # Linux iputils ping: -c count, -W per-reply timeout in seconds.
+    return ["ping", "-c", "1", "-W", "2", host]
+
+
 def ping_once(host):
-    # macOS: -W is ms; 2000ms per probe. -c 1 sends one packet.
+    kwargs = {"capture_output": True, "timeout": 5}
+    if IS_WINDOWS:
+        # Hide the transient console window that would otherwise flash.
+        kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
     try:
-        r = subprocess.run(
-            ["ping", "-c", "1", "-W", "2000", host],
-            capture_output=True,
-            timeout=5,
-        )
-        return r.returncode == 0
+        r = subprocess.run(_ping_argv(host), **kwargs)
     except Exception:
         return False
+    if r.returncode != 0:
+        return False
+    if IS_WINDOWS:
+        # Windows ping can exit 0 even when unreachable (e.g., a gateway
+        # returns "Destination host unreachable"). A real echo reply always
+        # contains "TTL=" in the output — that's the reliable signal.
+        out = (r.stdout or b"") + (r.stderr or b"")
+        return b"TTL=" in out or b"ttl=" in out
+    return True
 
 
 def pinger():

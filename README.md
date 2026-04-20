@@ -4,8 +4,14 @@ Tiny zero-dependency ping monitor with a browser UI. Pings a host every 15s, ser
 
 ## Run
 
+macOS / Linux:
 ```sh
 python3 pingwatch.py
+```
+
+Windows (PowerShell or cmd):
+```
+py pingwatch.py
 ```
 
 Then open <http://127.0.0.1:8765> and click **Enable alarm + desktop notifications** once (browsers require a user gesture before audio/notifications).
@@ -14,6 +20,6 @@ The target host is configurable from the page — default is `192.168.50.180`. C
 
 ## Notes
 
-- macOS Python 3 (stdlib only). Uses the system `ping` binary.
+- Python 3, stdlib only. Uses the system `ping` binary (flags selected per OS).
 - Browser can't send ICMP itself, hence the local helper.
 - Port, ping interval, and default host are constants at the top of `pingwatch.py`.
