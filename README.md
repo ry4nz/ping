@@ -2,6 +2,8 @@
 
 Tiny zero-dependency ping monitor with a browser UI. Pings a host every 15s, serves a status page on `localhost:8765`, and after 5 minutes of consecutive failures: flashes the page red, plays a looping alarm tone, and fires a desktop notification.
 
+Runs on **macOS, Linux, and Windows** — the script detects the platform and uses the matching `ping` flags automatically.
+
 ## Run
 
 macOS / Linux:
